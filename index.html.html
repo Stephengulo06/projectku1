@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Absensi Mahasiswa - KTM OCR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00ADB5;
+      --background: #222831;
+      --card: #393E46;
+      --text: #EEEEEE;
+      --success: #29C76F;
+      --danger: #FF4F5A;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--background);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 25px;
+      border-radius: 12px;
+      background-color: var(--card);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease-in-out;
+    }
+
+    .container.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: var(--primary);
+    }
+
+    .upload-section {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"] {
+      background: var(--background);
+      color: var(--text);
+      border: 1px solid var(--primary);
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #028890;
+    }
+
+    .status {
+      text-align: center;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+
+    .status-hadir {
+      color: var(--success);
+      font-weight: bold;
+    }
+
+    #printBtn, #backBtn {
+      margin-top: 30px;
+      margin-right: 10px;
+    }
+
+    .btn-wrapper {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+    }
+
+    @media print {
+      body {
+        background-color: #fff;
+        color: #000;
+      }
+      #printBtn, #backBtn, .screen-1, details {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container screen screen-1 active">
+    <h1>Absensi Mahasiswa Fakultas Ilmu Komputer</h1>
+    <div class="upload-section">
+      <input type="file" id="imageUpload" accept="image/*">
+      <button onclick="bacaKTM()">Baca KTM</button>
+    </div>
+    <div class="status" id="status">Belum ada proses</div>
+    <details>
+      <summary>Lihat Hasil OCR</summary>
+      <pre id="ocrText" style="white-space: pre-wrap; background: #111; padding: 10px; border-radius: 5px;"></pre>
+    </details>
+  </div>
+
+  <div class="container screen screen-2">
+    <h2>Daftar Kehadiran Mahasiswa</h2>
+    <div id="studentInfo"></div>
+    <div class="btn-wrapper">
+      <button id="backBtn" onclick="kembaliKeAwal()"> Kembali</button>
+      <button id="printBtn" onclick="window.print()">🖨️ Cetak Halaman</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <script>
+    const daftarMahasiswa = [
+      {
+        nama: "Stephen Gilbert Richardo Gulo",
+        npm: "230840103",
+        ttl: "Tangerang, 06 September 2005",
+        prodi: "Teknik Informatika",
+        fakultas: "Fakultas Ilmu Komputer"
+      },
+    ];
+
+    function bacaKTM() {
+      const file = document.getElementById('imageUpload').files[0];
+      const status = document.getElementById('status');
+      const ocrText = document.getElementById('ocrText');
+
+      if (!file) {
+        alert('Silakan upload gambar KTM.');
+        return;
+      }
+
+      status.textContent = '⏳ Sedang memproses gambar...';
+
+      Tesseract.recognize(file, 'eng').then(({ data: { text } }) => {
+        ocrText.textContent = text;
+
+        let ditemukan = false;
+
+        for (let mhs of daftarMahasiswa) {
+          if (text.toLowerCase().includes(mhs.nama.toLowerCase()) && text.includes(mhs.npm)) {
+            tampilkanData(mhs);
+            ditemukan = true;
+            break;
+          }
+        }
+
+        if (!ditemukan) {
+          status.textContent = '❌ Data mahasiswa tidak ditemukan.';
+        }
+      });
+    }
+
+    function tampilkanData(mhs) {
+      const screen1 = document.querySelector('.screen-1');
+      const screen2 = document.querySelector('.screen-2');
+
+      screen1.classList.remove('active');
+      screen2.classList.add('active');
+
+      setTimeout(() => {
+        screen2.classList.add('active');
+      }, 50);
+
+      const table = `
+        <table>
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>NPM</th>
+              <th>Tempat, Tgl Lahir</th>
+              <th>Program Studi</th>
+              <th>Fakultas</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${mhs.nama}</td>
+              <td>${mhs.npm}</td>
+              <td>${mhs.ttl}</td>
+              <td>${mhs.prodi}</td>
+              <td>${mhs.fakultas}</td>
+              <td class="status-hadir">HADIR</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      document.getElementById('studentInfo').innerHTML = table;
+    }
+
+    function kembaliKeAwal() {
+      const screen1 = document.querySelector('.screen-1');
+      const screen2 = document.querySelector('.screen-2');
+
+      screen2.classList.remove('active');
+      screen1.classList.add('active');
+
+      setTimeout(() => {
+        screen1.classList.add('active');
+      }, 50);
+    }
+  </script>
+</body>
+</html>
